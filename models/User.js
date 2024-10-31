@@ -6,9 +6,11 @@ const UserSchema = new mongoose.Schema({
     password: { type: String, required: false },
     role: { type: String, enum: ['principal', 'teacher', 'student'], required: true },
     class: { type: mongoose.Schema.Types.ObjectId, ref: 'Class' },
-    isInvited: {type: Boolean, default: false},
-    invitationToken: {type: String},
-    invitationExpires: {type: Date},
+    section: { type: String, required: false },
+    courses: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Course' }],
+    isInvited: { type: Boolean, default: false },
+    invitationToken: { type: String },
+    invitationExpires: { type: Date },
 });
 
 const User = mongoose.model('User', UserSchema);
