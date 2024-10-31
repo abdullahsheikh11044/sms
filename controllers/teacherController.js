@@ -28,7 +28,7 @@ export const teacherInvitation = async (req, res) => {
             },
         });
 
-        const signupLink = `http://localhost:5000/api/teachers/teacher-signup/${invitationToken}`;
+        const signupLink = `http://localhost:5000/api/teachers/signup/${invitationToken}`;
         const mailOptions = {
             from: process.env.EMAIL_USER,
             to: email,
@@ -96,6 +96,54 @@ export const signIn = async (req, res) => {
     }
     catch (err) {
         res.status(400).json({ message: "unable to login." })
+    }
+};
+
+export const studentInvitation = async (req, res) => {
+    try {
+        // Retrieve teacher's email from `req.user` (populated by the authentication middleware)
+        const teacherEmail = req.user.email;
+
+        const { studentEmail, section, courses } = req.body; // Email of the student to be invited and other details
+
+        // Verify that the user has a teacher role
+        if (req.user.role !== "teacher") {
+            return res.status(403).json({ message: "You don't have permission to add students." });
+        }
+
+        // Check if the student already exists
+        const existingStudent = await User.findOne({ email: studentEmail });
+        if (existingStudent) {
+            return res.status(400).json({ message: "Student with this email already exists." });
+        }
+
+        // Create an invitation token for the student
+        const invitationToken = jwt.sign({ email: studentEmail, role: 'student', section, courses }, process.env.JWT_SECRET, { expiresIn: '24h' });
+
+        // Configure the email transporter
+        const transporter = nodemailer.createTransport({
+            service: 'Gmail',
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS
+            },
+        });
+
+        // Compose the email
+        const signupLink = `http://localhost:5000/signup/${invitationToken}`;
+        const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: studentEmail,
+            subject: 'Student Invitation',
+            html: `<p>You have been invited to join the course. Click <a href="${signupLink}">here</a> to complete the registration.</p>`,
+        };
+
+        // Send the email invitation
+        await transporter.sendMail(mailOptions);
+        res.status(200).json({ message: `Invitation sent successfully to student ${studentEmail} by teacher ${teacherEmail}.` });
+    } catch (error) {
+        console.error("Error sending student invitation:", error);
+        res.status(500).json({ message: "An error occurred while inviting the student." });
     }
 };
 
